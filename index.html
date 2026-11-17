@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Suite: Caesar, Vigenère, Rail Fence & Grid</title>
+    <!-- PWA Manifest & Theme Color -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#06b6d4',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .cell-highlight {
+            background-color: rgba(99, 102, 241, 0.3) !important;
+            border-color: #818cf8 !important;
+            color: #ffffff !important;
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-card sticky top-0 z-50 px-4 py-3 border-b border-slate-800 shadow-xl">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-white font-bold text-xl">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white leading-tight">Crypto Suite: Caesar, Vigenère & Grid</h1>
+                    <p class="text-xs text-slate-400">Classic Ciphers, Brute-force & Academic Square</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="px-2.5 py-1 text-xs font-semibold bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
+                    <i class="fa-solid fa-lock text-[9px] mr-1"></i> Secure PWA
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="max-w-4xl w-full mx-auto p-4 flex-grow pb-24 space-y-6">
+
+        <!-- Navigation Tabs (4 Tabs) -->
+        <div class="flex flex-wrap bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow-inner gap-1">
+            <button onclick="switchTab('caesar')" id="tab-caesar" class="flex-1 min-w-[95px] py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center space-x-1.5 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
+                <i class="fa-solid fa-rotate text-xs"></i>
+                <span>Caesar</span>
+            </button>
+            <button onclick="switchTab('vigenere')" id="tab-vigenere" class="flex-1 min-w-[95px] py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-key text-xs"></i>
+                <span>Vigenère</span>
+            </button>
+            <button onclick="switchTab('railfence')" id="tab-railfence" class="flex-1 min-w-[95px] py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-bars-staggered text-xs"></i>
+                <span>Rail Fence</span>
+            </button>
+            <button onclick="switchTab('grid')" id="tab-grid" class="flex-1 min-w-[95px] py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-table-cells text-xs"></i>
+                <span>26x26 Grid</span>
+            </button>
+        </div>
+
+        <!-- Notification Banner -->
+        <div id="notification" class="hidden p-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all duration-300">
+            <span id="notification-text"></span>
+            <button onclick="hideNotification()" class="text-xs font-bold px-2 py-1 bg-black/20 rounded hover:bg-black/40">Close</button>
+        </div>
+
+        <!-- SECTION 1: CAESAR CIPHER -->
+        <section id="section-caesar" class="space-y-6">
+            <div class="glass-card rounded-2xl p-5 shadow-2xl border border-slate-700/60">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base sm:text-lg font-bold text-white flex items-center">
+                        <i class="fa-solid fa-rotate text-indigo-400 mr-2"></i>
+                        Caesar Cipher (Encrypt / Decrypt / Crack)
+                    </h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Input Text:</label>
+                        <textarea id="caesar-input" rows="2" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all font-mono" placeholder="Enter text here..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Shift Key (1-25):</label>
+                            <input type="number" id="caesar-shift" value="3" min="1" max="25" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mode:</label>
+                            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+                                <button onclick="setCaesarMode('encrypt')" id="btn-caesar-encrypt" class="flex-1 py-2 rounded-lg text-xs font-bold bg-indigo-600 text-white transition-all shadow-md">Encrypt</button>
+                                <button onclick="setCaesarMode('decrypt')" id="btn-caesar-decrypt" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Decrypt</button>
+                                <button onclick="setCaesarMode('crack')" id="btn-caesar-crack" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Crack</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="processCaesar()" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 hover:opacity-95 transition-all text-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-gears"></i>
+                        <span>Execute Caesar Operation</span>
+                    </button>
+                </div>
+
+                <div class="mt-5 p-4 rounded-xl bg-slate-900/95 border border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-400">Result / Brute-force Options:</span>
+                        <button onclick="copyResult('caesar-output')" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy Result</span>
+                        </button>
+                    </div>
+                    <div id="caesar-output" class="text-base font-mono font-bold text-cyan-400 tracking-wider whitespace-pre-wrap bg-slate-950 p-3.5 rounded-lg border border-slate-800 min-h-[52px]">
+                        -
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: VIGENERE CIPHER -->
+        <section id="section-vigenere" class="space-y-6 hidden">
+            <div class="glass-card rounded-2xl p-5 shadow-2xl border border-slate-700/60">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base sm:text-lg font-bold text-white flex items-center">
+                        <i class="fa-solid fa-key text-cyan-400 mr-2"></i>
+                        Vigenère Cipher (Encrypt / Decrypt)
+                    </h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Input Text:</label>
+                        <textarea id="vig-input" rows="2" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition-all font-mono" placeholder="Enter text here..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Keyword:</label>
+                            <input type="text" id="vig-key" value="" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition-all uppercase font-mono" placeholder="Enter keyword...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mode:</label>
+                            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+                                <button onclick="setVigMode('encrypt')" id="btn-vig-encrypt" class="flex-1 py-2 rounded-lg text-xs font-bold bg-cyan-600 text-white transition-all shadow-md">Encrypt</button>
+                                <button onclick="setVigMode('decrypt')" id="btn-vig-decrypt" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Decrypt</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="processVigenere()" class="w-full py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-cyan-600/30 hover:opacity-95 transition-all text-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-gears"></i>
+                        <span>Execute Vigenère Operation</span>
+                    </button>
+                </div>
+
+                <div class="mt-5 p-4 rounded-xl bg-slate-900/95 border border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-400">Result:</span>
+                        <button onclick="copyResult('vig-output')" class="text-xs text-cyan-400 hover:text-cyan-300 flex items-center space-x-1">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy Result</span>
+                        </button>
+                    </div>
+                    <div id="vig-output" class="text-xl font-mono font-bold text-emerald-400 tracking-wider break-all bg-slate-950 p-3.5 rounded-lg border border-slate-800 min-h-[52px] flex items-center">
+                        -
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: RAIL FENCE CIPHER (ENCRYPT / DECRYPT / CRACK) -->
+        <section id="section-railfence" class="space-y-6 hidden">
+            <div class="glass-card rounded-2xl p-5 shadow-2xl border border-slate-700/60">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base sm:text-lg font-bold text-white flex items-center">
+                        <i class="fa-solid fa-bars-staggered text-indigo-400 mr-2"></i>
+                        Rail Fence Cipher (Encrypt / Decrypt / Crack)
+                    </h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Input Text:</label>
+                        <textarea id="rail-input" rows="2" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all font-mono" placeholder="Enter text here..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Number of Rails (2 - 10):</label>
+                            <input type="number" id="rail-rails" value="3" min="2" max="10" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mode:</label>
+                            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+                                <button onclick="setRailMode('encrypt')" id="btn-rail-encrypt" class="flex-1 py-2 rounded-lg text-xs font-bold bg-indigo-600 text-white transition-all shadow-md">Encrypt</button>
+                                <button onclick="setRailMode('decrypt')" id="btn-rail-decrypt" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Decrypt</button>
+                                <button onclick="setRailMode('crack')" id="btn-rail-crack" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">Crack</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="processRailFence()" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 hover:opacity-95 transition-all text-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-gears"></i>
+                        <span>Execute Rail Fence Operation</span>
+                    </button>
+                </div>
+
+                <div class="mt-5 p-4 rounded-xl bg-slate-900/95 border border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-400">Result / Crack Possibilities:</span>
+                        <button onclick="copyResult('rail-output')" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy Result</span>
+                        </button>
+                    </div>
+                    <div id="rail-output" class="text-base font-mono font-bold text-cyan-400 tracking-wider whitespace-pre-wrap bg-slate-950 p-3.5 rounded-lg border border-slate-800 min-h-[52px]">
+                        -
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: 26x26 GRID TABLE -->
+        <section id="section-grid" class="space-y-6 hidden">
+            <div class="glass-card rounded-2xl p-5 shadow-xl border border-slate-700/60">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-white flex items-center">
+                            <i class="fa-solid fa-table text-cyan-400 mr-2"></i>
+                            Interactive Vigenère Square (26 × 26)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Click any cell in the grid to instantly view the character intersection.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="selected-cell-info" class="text-xs font-mono bg-indigo-500/20 text-indigo-300 px-3 py-1.5 rounded-lg border border-indigo-500/30">
+                            Selected Intersection: Choose a cell
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Quick Selection Helpers -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Row Key:</label>
+                        <select id="select-row" onchange="highlightSelection()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono"></select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Column Plaintext:</label>
+                        <select id="select-col" onchange="highlightSelection()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono"></select>
+                    </div>
+                </div>
+
+                <!-- Scrollable 26x26 Table Grid -->
+                <div class="overflow-auto max-h-[450px] rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-inner">
+                    <table id="vigenere-square-table" class="text-xs font-mono border-collapse text-center select-none"></table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-card py-4 text-center text-xs text-slate-400 border-t border-slate-800">
+        <p>Crypto Suite (Caesar, Vigenère, Rail Fence & Grid) - PWA Ready.</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error:', err));
+            });
+        }
+
+        function switchTab(tabId) {
+            const tabs = ['caesar', 'vigenere', 'railfence', 'grid'];
+            tabs.forEach(t => {
+                const sec = document.getElementById(`section-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if(sec) sec.classList.add('hidden');
+                if(btn) btn.className = "flex-1 min-w-[95px] py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white";
+            });
+
+            const activeSec = document.getElementById(`section-${tabId}`);
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if(activeSec) activeSec.classList.remove('hidden');
+            if(activeBtn) activeBtn.className = "flex-1 min-w-[95px] py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center space-x-1.5 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30";
+        }
+
+        function showNotification(text, type = 'success') {
+            const notif = document.getElementById('notification');
+            const notifText = document.getElementById('notification-text');
+            notifText.innerText = text;
+            notif.className = `p-3 rounded-xl text-xs sm:text-sm flex items-center justify-between transition-all duration-300 ${type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-700/50' : 'bg-rose-950/90 text-rose-300 border border-rose-700/50'}`;
+            notif.classList.remove('hidden');
+            setTimeout(() => notif.classList.add('hidden'), 4000);
+        }
+
+        function hideNotification() {
+            document.getElementById('notification').classList.add('hidden');
+        }
+
+        function copyResult(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showNotification('Result copied successfully to clipboard!');
+        }
+
+        // --- CAESAR LOGIC ---
+        let caesarMode = 'encrypt';
+        function setCaesarMode(mode) {
+            caesarMode = mode;
+            ['encrypt', 'decrypt', 'crack'].forEach(m => {
+                const btn = document.getElementById(`btn-caesar-${m}`);
+                if(btn) {
+                    if(m === mode) {
+                        btn.className = "flex-1 py-2 rounded-lg text-xs font-bold bg-indigo-600 text-white transition-all shadow-md";
+                    } else {
+                        btn.className = "flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
+                    }
+                }
+            });
+            processCaesar();
+        }
+
+        function processCaesar() {
+            const input = document.getElementById('caesar-input').value;
+            let shift = parseInt(document.getElementById('caesar-shift').value) || 0;
+            const outputDiv = document.getElementById('caesar-output');
+
+            if (!input) {
+                outputDiv.innerText = "-";
+                return;
+            }
+
+            if (caesarMode === 'crack') {
+                let res = "";
+                for (let s = 1; s <= 25; s++) {
+                    let decrypted = caesarTransform(input, s, 'decrypt');
+                    res += `Shift ${s}: ${decrypted}\n`;
+                }
+                outputDiv.innerText = res;
+                return;
+            }
+
+            if (caesarMode === 'decrypt') {
+                shift = (26 - (shift % 26)) % 26;
+            } else {
+                shift = shift % 26;
+            }
+
+            outputDiv.innerText = caesarTransform(input, shift, 'encrypt');
+        }
+
+        function caesarTransform(input, shift, mode) {
+            let s = mode === 'decrypt' ? (26 - (shift % 26)) % 26 : shift % 26;
+            let result = "";
+            for (let i = 0; i < input.length; i++) {
+                let char = input[i];
+                if (char >= 'a' && char <= 'z') {
+                    let code = char.charCodeAt(0) - 97;
+                    result += String.fromCharCode(97 + (code + s) % 26);
+                } else if (char >= 'A' && char <= 'Z') {
+                    let code = char.charCodeAt(0) - 65;
+                    result += String.fromCharCode(65 + (code + s) % 26);
+                } else {
+                    result += char;
+                }
+            }
+            return result;
+        }
+
+        // --- VIGENERE LOGIC ---
+        let vigMode = 'encrypt';
+        function setVigMode(mode) {
+            vigMode = mode;
+            ['encrypt', 'decrypt'].forEach(m => {
+                const btn = document.getElementById(`btn-vig-${m}`);
+                if(btn) {
+                    if(m === mode) {
+                        btn.className = "flex-1 py-2 rounded-lg text-xs font-bold bg-cyan-600 text-white transition-all shadow-md";
+                    } else {
+                        btn.className = "flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
+                    }
+                }
+            });
+            processVigenere();
+        }
+
+        function processVigenere() {
+            const input = document.getElementById('vig-input').value.toLowerCase();
+            const key = document.getElementById('vig-key').value.toLowerCase();
+            const outputDiv = document.getElementById('vig-output');
+
+            if (!input || !key) {
+                outputDiv.innerText = "-";
+                return;
+            }
+
+            let result = "";
+            let keyIndex = 0;
+
+            for (let i = 0; i < input.length; i++) {
+                const char = input[i];
+                if (char >= 'a' && char <= 'z') {
+                    const pCode = char.charCodeAt(0) - 97;
+                    const kChar = key[keyIndex % key.length];
+                    const kCode = kChar.charCodeAt(0) - 97;
+                    
+                    let resCode;
+                    if (vigMode === 'encrypt') {
+                        resCode = (pCode + kCode) % 26;
+                    } else {
+                        resCode = (pCode - kCode + 26) % 26;
+                    }
+
+                    result += String.fromCharCode(97 + resCode).toUpperCase();
+                    keyIndex++;
+                } else {
+                    result += char;
+                }
+            }
+            outputDiv.innerText = result;
+        }
+
+        // --- RAIL FENCE LOGIC (ENCRYPT / DECRYPT / CRACK) ---
+        let railMode = 'encrypt';
+        function setRailMode(mode) {
+            railMode = mode;
+            ['encrypt', 'decrypt', 'crack'].forEach(m => {
+                const btn = document.getElementById(`btn-rail-${m}`);
+                if(btn) {
+                    if(m === mode) {
+                        btn.className = "flex-1 py-2 rounded-lg text-xs font-bold bg-indigo-600 text-white transition-all shadow-md";
+                    } else {
+                        btn.className = "flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
+                    }
+                }
+            });
+            processRailFence();
+        }
+
+        function processRailFence() {
+            const input = document.getElementById('rail-input').value;
+            const rails = parseInt(document.getElementById('rail-rails').value) || 3;
+            const outputDiv = document.getElementById('rail-output');
+
+            if (!input) {
+                outputDiv.innerText = "-";
+                return;
+            }
+
+            if (railMode === 'encrypt') {
+                outputDiv.innerText = railFenceEncrypt(input, rails);
+            } else if (railMode === 'decrypt') {
+                outputDiv.innerText = railFenceDecrypt(input, rails);
+            } else if (railMode === 'crack') {
+                let res = "";
+                let limit = Math.min(Math.max(2, rails), input.length);
+                for (let r = 2; r <= limit; r++) {
+                    let decrypted = railFenceDecrypt(input, r);
+                    res += `Rails ${r}: ${decrypted}\n`;
+                }
+                outputDiv.innerText = res;
+            }
+        }
+
+        function railFenceEncrypt(text, rails) {
+            if (rails <= 1) return text;
+            let fence = Array.from({ length: rails }, () => []);
+            let rail = 0;
+            let dir = 1;
+
+            for (let char of text) {
+                fence[rail].push(char);
+                rail += dir;
+                if (rail === 0 || rail === rails - 1) {
+                    dir = -dir;
+                }
+            }
+            return fence.flat().join('');
+        }
+
+        function railFenceDecrypt(cipher, rails) {
+            if (rails <= 1) return cipher;
+            let pattern = Array.from({ length: rails }, () => Array(cipher.length).fill(false));
+            let rail = 0;
+            let dir = 1;
+
+            for (let i = 0; i < cipher.length; i++) {
+                pattern[rail][i] = true;
+                rail += dir;
+                if (rail === 0 || rail === rails - 1) {
+                    dir = -dir;
+                }
+            }
+
+            let index = 0;
+            for (let r = 0; r < rails; r++) {
+                for (let c = 0; c < cipher.length; c++) {
+                    if (pattern[r][c] && index < cipher.length) {
+                        pattern[r][c] = cipher[index++];
+                    }
+                }
+            }
+
+            let result = "";
+            rail = 0;
+            dir = 1;
+            for (let i = 0; i < cipher.length; i++) {
+                result += pattern[rail][i];
+                rail += dir;
+                if (rail === 0 || rail === rails - 1) {
+                    dir = -dir;
+                }
+            }
+            return result;
+        }
+
+        // --- ACADEMIC GRID (26x26) LOGIC WITH STICKY HEADERS & COLUMNS ---
+        function buildVigenereSquare() {
+            const table = document.getElementById('vigenere-square-table');
+            const rowSelect = document.getElementById('select-row');
+            const colSelect = document.getElementById('select-col');
+            if(!table) return;
+            
+            let rowOpts = '';
+            let colOpts = '';
+            // الزاوية العليا اليسرى ثابتة في الاتجاهين (Sticky Top & Left, z-30)
+            let html = '<thead><tr class="bg-slate-900 text-indigo-400 font-bold border-b border-slate-800"><th class="p-2 w-8 border-r border-slate-800 bg-slate-900 sticky left-0 top-0 z-30">\\</th>';
+
+            for (let i = 0; i < 26; i++) {
+                const c = String.fromCharCode(97 + i).toUpperCase();
+                // الصف العلوي (الأعمدة) ثابت عند التمرير للأسفل (Sticky Top, z-20)
+                html += `<th class="p-2 w-8 border-r border-slate-900 bg-slate-900 sticky top-0 z-20">${c}</th>`;
+                colOpts += `<option value="${i}">${c}</option>`;
+                rowOpts += `<option value="${i}">${c}</option>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            rowSelect.innerHTML = rowOpts;
+            colSelect.innerHTML = colOpts;
+
+            for (let i = 0; i < 26; i++) {
+                const rowChar = String.fromCharCode(97 + i).toUpperCase();
+                html += `<tr class="border-b border-slate-900/60 hover:bg-slate-900/30">`;
+                // العمود الأيسر (الصفوف) ثابت عند التمرير لليمين (Sticky Left, z-10)
+                html += `<td class="p-2 bg-slate-900 font-bold text-indigo-400 border-r border-slate-800 sticky left-0 z-10">${rowChar}</td>`;
+                
+                for (let j = 0; j < 26; j++) {
+                    const cellChar = String.fromCharCode(97 + (i + j) % 26).toUpperCase();
+                    html += `<td id="cell-${i}-${j}" class="p-2 w-8 border-r border-slate-900/50 text-slate-300 transition-all cursor-pointer hover:bg-indigo-500/20" onclick="selectCell(${i}, ${j})">${cellChar}</td>`;
+                }
+                html += `</tr>`;
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+            highlightSelection();
+        }
+
+        function highlightSelection() {
+            document.querySelectorAll('#vigenere-square-table td').forEach(td => {
+                td.classList.remove('cell-highlight', 'bg-indigo-600/40');
+            });
+
+            const rEl = document.getElementById('select-row');
+            const cEl = document.getElementById('select-col');
+            if(!rEl || !cEl) return;
+
+            const r = parseInt(rEl.value);
+            const c = parseInt(cEl.value);
+
+            const rowChar = String.fromCharCode(97 + r).toUpperCase();
+            const colChar = String.fromCharCode(97 + c).toUpperCase();
+            const intersection = String.fromCharCode(97 + (r + c) % 26).toUpperCase();
+
+            const targetCell = document.getElementById(`cell-${r}-${c}`);
+            if (targetCell) targetCell.classList.add('cell-highlight');
+
+            const infoEl = document.getElementById('selected-cell-info');
+            if(infoEl) infoEl.innerText = `Key: ${rowChar} | Text: ${colChar} ➔ Result: ${intersection}`;
+        }
+
+        function selectCell(r, c) {
+            document.getElementById('select-row').value = r;
+            document.getElementById('select-col').value = c;
+            highlightSelection();
+        }
+
+        // Initialize grid on window load
+        window.onload = function() {
+            buildVigenereSquare();
+        };
+    </script>
+</body>
+</html>
